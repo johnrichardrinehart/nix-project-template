@@ -32,6 +32,8 @@ git ls-files | awk -F/ '{ print $NF }' | sed -n 's/.*\.//p' | sort -u
 
 Classify extensionless scripts, `.envrc`, generated files, and vendored trees separately. Do not allow two mutating formatters to target the same files unless their order is intentional and stable.
 
+Configure file-oriented formatters and linters through treefmt-nix, including tools such as deadnix, statix, and ShellCheck. The Git hook configuration should enable only the treefmt hook for that policy; do not enable the same tools again as individual git-hooks.nix hooks. Direct hooks are reserved for checks outside treefmt's responsibility.
+
 ## Checks
 
 Add the cheapest precise check for each behavior:

@@ -7,7 +7,7 @@ The result is one definition of how to build, run, format, lint, test, and enter
 ## Design goals
 
 - **Consumer-clean outputs.** Development-only inputs are isolated in a flake-parts partition. Consumers of packages, overlays, libraries, or NixOS modules do not fetch formatter and hook inputs.
-- **One formatting policy.** treefmt-nix defines the formatter used by `nix fmt`, the sandboxed formatting check, and the formatting Git hook.
+- **One formatting and linting policy.** treefmt-nix defines file-oriented formatters and linters once; `nix fmt`, the sandboxed treefmt check, and the treefmt Git hook consume that definition.
 - **Fast feedback without weak release gates.** Pre-commit runs cheap checks; pre-push runs the authoritative flake checks; CI runs the same flake checks in a clean environment.
 - **Reproducible commands.** Custom shell programs use `writeShellApplication` with explicit `runtimeInputs`, making dependencies visible, enabling build-time ShellCheck, and making the command directly `nix run`-able.
 - **Thin CI configuration.** CI files provision Nix, credentials, and caching, then invoke a one-line repository command. Project logic remains runnable outside any particular CI service.
@@ -81,7 +81,7 @@ Every committed text format must be classified as one of:
 
 The template covers its Nix, shell, TOML, JSON, Markdown, YAML, and GitHub Actions files. Projects must update the treefmt configuration when introducing another file type.
 
-Formatting is intentionally defined once. Do not recreate formatter command lines in a task runner, hook, or CI file.
+Formatting and file-oriented linting are intentionally defined once in treefmt-nix. git-hooks.nix invokes the treefmt wrapper; it must not redefine individual treefmt-managed tools such as deadnix, statix, or ShellCheck. Do not recreate those tools or their command lines in a task runner, hook, or CI file. Hooks that are not file-oriented formatting or linting—such as large-file, merge-conflict, or pre-push checks—remain direct git-hooks.nix concerns.
 
 ## Check tiers
 

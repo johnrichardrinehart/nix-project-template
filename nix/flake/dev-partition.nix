@@ -14,15 +14,18 @@
     }:
     {
       # One definition drives `nix fmt`, the sandboxed treefmt check, and the
-      # formatting hook. Add every committed text format or explicitly exclude it.
+      # treefmt Git hook. Formatters and file-oriented linters belong here, not
+      # in git-hooks. Add every committed text format or explicitly exclude it.
       treefmt = {
         projectRootFile = "flake.nix";
         programs = {
           actionlint.enable = true;
+          deadnix.enable = true;
           nixfmt.enable = true;
           prettier.enable = true;
           shellcheck.enable = true;
           shfmt.enable = true;
+          statix.enable = true;
           taplo.enable = true;
         };
         settings.formatter = {
@@ -39,8 +42,6 @@
 
       pre-commit.settings.hooks = {
         treefmt.enable = true;
-        deadnix.enable = true;
-        statix.enable = true;
         check-added-large-files.enable = true;
         check-merge-conflicts.enable = true;
 
