@@ -34,6 +34,8 @@ Classify extensionless scripts, `.envrc`, generated files, and vendored trees se
 
 Configure file-oriented formatters and linters through treefmt-nix, including tools such as deadnix, statix, and ShellCheck. The Git hook configuration should enable only the treefmt hook for that policy; do not enable the same tools again as individual git-hooks.nix hooks. Direct hooks are reserved for checks outside treefmt's responsibility.
 
+This template sets `treefmt.flakeCheck = false` while retaining the git-hooks.nix check. The latter runs the treefmt hook in a pure, sandboxed derivation together with Git-specific hooks, so a separate `checks.treefmt` would duplicate work. Do not disable `pre-commit.check` without either restoring `treefmt.flakeCheck` or defining an equivalent sandboxed treefmt check.
+
 ## Checks
 
 Add the cheapest precise check for each behavior:

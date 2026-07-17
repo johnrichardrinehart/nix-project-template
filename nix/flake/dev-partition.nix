@@ -13,11 +13,15 @@
       ...
     }:
     {
-      # One definition drives `nix fmt`, the sandboxed treefmt check, and the
-      # treefmt Git hook. Formatters and file-oriented linters belong here, not
-      # in git-hooks. Add every committed text format or explicitly exclude it.
+      # One definition drives `nix fmt` and the treefmt Git hook. The hook is
+      # also exercised by the sandboxed pre-commit check below. Formatters and
+      # file-oriented linters belong here, not in git-hooks.
       treefmt = {
         projectRootFile = "flake.nix";
+
+        # `checks.pre-commit` already runs the treefmt hook in the sandbox along
+        # with Git-specific hooks. Avoid a second derivation that repeats it.
+        flakeCheck = false;
         programs = {
           actionlint.enable = true;
           deadnix.enable = true;
