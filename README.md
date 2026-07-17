@@ -58,7 +58,9 @@ With direnv and nix-direnv installed, `direnv allow` activates `nix develop` aut
 ├── .envrc
 ├── .editorconfig
 ├── .gitignore
-└── .github/workflows/ci.yml
+└── .github/workflows/
+    ├── ci-magic-cache.yml
+    └── ci-no-cache.yml
 ```
 
 Directories are added when they carry real behavior; empty abstraction layers are not required. A real project should replace the demonstration `ci` package with its deliverables while retaining a packaged CI entry point.
@@ -107,9 +109,17 @@ CI has two layers:
 
 Complicated build, test, matrix, deployment, retry, and artifact logic does not belong in a CI-specific YAML language. Put it in Nix checks or package an Ertt-style shell application with explicit runtime dependencies. The same operation can then be run locally, from another CI service, or during incident diagnosis.
 
-The included workflow pins its actions, installs a known Nix release, and connects a cache that persists Nix store paths across workflow runs. Hosted or self-hosted environments may instead use Cachix, FlakeHub Cache, Attic, a native binary cache, or remote builders. Cache credentials belong to the platform-adaptation layer; cacheable build behavior belongs in Nix derivations.
+The included workflows pin their actions and install the same known Nix release. They run the same project command, but one enables Magic Nix Cache while the other has no project store-path cache. Running both against each revision makes cache benefit—including startup and publication overhead—observable rather than assumed. Compare the complete job duration as well as the `nix flake check` step, and compare cold and warm runs before choosing a default for a derived project.
 
-See [docs/ci.md](docs/ci.md) for the boundary and provider requirements.
+### Magic Nix Cache performance note
+
+At the pinned v14 implementation, Magic Nix Cache processes store paths through one worker: it finishes a path's compressed NAR and `.narinfo` uploads before advancing to the next path. Upload chunks within one large file have a fixed concurrency of four, but store-path concurrency is not configurable through the Action or its CLI. A single path normally consumes two GitHub cache entries, and GitHub limits a repository to 200 cache-entry uploads per minute.
+
+Consequently, projects with broad closures can spend longer publishing cache entries than evaluating and building checks. The action can also enqueue closure dependencies already obtainable from an upstream binary cache. More path concurrency alone would encounter the entry-rate limit sooner; useful caching depends on reducing duplicate/unnecessary uploads or using a cache backend designed for Nix store paths.
+
+Treat the two workflows as a benchmark fixture, not a claim that either choice is universally faster. Retain only the selected production workflow once measurements are representative, or continue running both when detecting cache-performance regressions is worth the duplicate CI work. Hosted or self-hosted environments may instead use Cachix, FlakeHub Cache, Attic, a native binary cache, or remote builders. Cache credentials belong to the platform-adaptation layer; cacheable build behavior belongs in Nix derivations.
+
+See [docs/ci.md](docs/ci.md) for the boundary, measurement guidance, and provider requirements.
 
 ## Shell applications
 

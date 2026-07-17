@@ -83,6 +83,19 @@ A cache adapter must define:
 
 GitHub's native Actions cache is suitable for CI-only reuse. Cachix, FlakeHub Cache, Attic, and ordinary Nix binary caches can also serve developers or deployment hosts. Remote builders complement caches by moving computation; they do not replace cache publication.
 
+### Measure the cache adapter
+
+The template deliberately provides `ci-magic-cache.yml` and `ci-no-cache.yml`. Both provision the same Nix release and execute the same flake command. Compare at least:
+
+- total job duration;
+- cache setup and post-job publication duration;
+- the project-command duration;
+- cold and warm revisions;
+- bytes and entries published;
+- cache API throttling or eviction evidence.
+
+Magic Nix Cache v14 serializes complete store-path uploads through one worker. Its fixed concurrency of four applies to chunks within one file, not to multiple paths, and is not configurable. Because each path generally creates a NAR and `.narinfo` cache entry, broad closures can approach GitHub's 200-entry-per-minute repository limit and make publication a net loss. Select it only when observed reuse outweighs that cost.
+
 ## Credentials
 
 Provisioning credentials should be narrowly scoped to the adapter that consumes them. Application and deployment secrets should be declared through SecretSpec and exposed only to the packaged command that needs them.
