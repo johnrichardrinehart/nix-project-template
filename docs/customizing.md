@@ -2,7 +2,7 @@
 
 ## Outputs
 
-Replace the demonstration `ci` package with project deliverables. Keep a `ci` app when checks alone cannot represent all required CI behavior.
+Add project deliverables as they acquire real behavior. Do not wrap standard commands such as `nix flake check`, `nix fmt`, or `nix develop` in project-specific package or app names. When work cannot be represented as a flake check, expose it through a narrowly named app such as `integration-test` or `deploy` rather than a generic `ci` entry point.
 
 Move substantial output wiring into the matching directory under `nix/`:
 
@@ -55,4 +55,4 @@ Pre-commit should remain fast enough that developers leave it enabled. Put compl
 
 ## CI adapters
 
-Replace the included workflow adapters when the project uses another Nix implementation, binary cache, remote builder, or CI service. Preserve the boundary: provisioning and cache setup may be provider-specific; project execution should stay one line.
+Replace the included workflow adapters when the project uses another Nix implementation, binary cache, remote builder, or CI service. Preserve the boundary: provisioning and cache setup may be provider-specific; ordinary project execution should remain the explicit one-line command `nix flake check --print-build-logs`.

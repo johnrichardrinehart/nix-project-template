@@ -9,7 +9,7 @@ The result is one definition of how to build, run, format, lint, test, and enter
 - **Consumer-clean outputs.** Development-only inputs are isolated in a flake-parts partition. Consumers of packages, overlays, libraries, or NixOS modules do not fetch formatter and hook inputs.
 - **One formatting and linting policy.** treefmt-nix defines file-oriented formatters and linters once; `nix fmt` and the treefmt Git hook consume that definition, while the sandboxed git-hooks check exercises the same hook for CI.
 - **Fast feedback without weak release gates.** Pre-commit runs cheap checks; pre-push runs the authoritative flake checks; CI runs the same flake checks in a clean environment.
-- **Reproducible commands.** Custom shell programs use `writeShellApplication` with explicit `runtimeInputs`, making dependencies visible, enabling build-time ShellCheck, and making the command directly `nix run`-able.
+- **Reproducible commands without aliases.** Standard Nix operations stay explicit. Substantive custom shell programs use `writeShellApplication` with visible runtime dependencies and build-time ShellCheck.
 - **Thin CI configuration.** CI files provision Nix, credentials, and caching, then invoke a one-line repository command. Project logic remains runnable outside any particular CI service.
 - **Stable source hashes.** Packages select source files with `lib.fileset` rather than copying the entire checkout. Unrelated documentation, editor state, and build artifacts therefore do not cause package hash churn.
 - **Automatic development environments.** nix-direnv activates and caches the default development shell when entering the repository.
@@ -24,9 +24,9 @@ This template deliberately optimizes for Nix-native projects. It is not intended
 nix fmt                         # apply the repository formatting policy
 nix flake check                 # run authoritative sandboxed checks
 nix develop                     # enter the development environment
-nix run                         # run the default app
-nix run .#ci                    # run the same command used by CI
 ```
+
+The template does not alias these commands through project-specific scripts or flake apps. Derived projects should add `nix run` apps only for actual project executables or substantive operations.
 
 With direnv and nix-direnv installed, `direnv allow` activates `nix develop` automatically and reuses the evaluated environment until watched inputs change.
 
@@ -43,18 +43,8 @@ With direnv and nix-direnv installed, `direnv allow` activates `nix develop` aut
 ├── nix/
 │   ├── flake/
 │   │   └── dev-partition.nix
-│   ├── checks/
-│   │   └── default.nix
-│   ├── packages/
-│   │   └── default.nix
-│   ├── scripts/
-│   │   └── ci.sh
-│   ├── examples/
-│   │   └── secretspec.toml
-│   ├── apps/                 # add when app wiring becomes substantial
-│   ├── overlays/             # add only when exported
-│   ├── nixosModules/         # add only when exported
-│   └── lib/                  # add only for genuinely shared Nix logic
+│   └── examples/
+│       └── secretspec.toml
 ├── .envrc
 ├── .editorconfig
 ├── .gitignore
@@ -63,7 +53,7 @@ With direnv and nix-direnv installed, `direnv allow` activates `nix develop` aut
     └── ci-no-cache.yml
 ```
 
-Directories are added when they carry real behavior; empty abstraction layers are not required. A real project should replace the demonstration `ci` package with its deliverables while retaining a packaged CI entry point.
+Directories are added when they carry real behavior; empty abstraction layers are not required. Derived projects should add `nix/packages/`, `nix/checks/`, `nix/apps/`, and similar structure only when their outputs are substantial enough to move out of `flake.nix`.
 
 ## Development partition
 
@@ -105,9 +95,9 @@ A check should be moved out of `nix flake check` only when sandboxing or cost ma
 CI has two layers:
 
 1. **Platform adaptation:** checkout, provision the selected Nix version, expose narrowly scoped credentials, enable builders, and connect a binary cache.
-2. **Project execution:** invoke one repository-owned command, normally `nix flake check --print-build-logs` or `nix run .#ci`.
+2. **Project execution:** invoke `nix flake check --print-build-logs` directly.
 
-Complicated build, test, matrix, deployment, retry, and artifact logic does not belong in a CI-specific YAML language. Put it in Nix checks or package an Ertt-style shell application with explicit runtime dependencies. The same operation can then be run locally, from another CI service, or during incident diagnosis.
+Do not add a project-specific package or app that only forwards to `nix flake check`; that indirection hides the familiar command without changing its behavior. Complicated build, test, matrix, deployment, retry, and artifact logic does not belong in a CI-specific YAML language. Put deterministic work in Nix checks. Package operations that genuinely cannot be checks as descriptively named shell applications with explicit runtime dependencies. The same operation can then be run locally, from another CI service, or during incident diagnosis.
 
 The included workflows pin their actions and install the same known Nix release. They run the same project command, but one enables Magic Nix Cache while the other has no project store-path cache. Running both against each revision makes cache benefit—including startup and publication overhead—observable rather than assumed. Compare the complete job duration as well as the `nix flake check` step, and compare cold and warm runs before choosing a default for a derived project.
 
@@ -123,7 +113,7 @@ See [docs/ci.md](docs/ci.md) for the boundary, measurement guidance, and provide
 
 ## Shell applications
 
-Use `writeShellApplication` for user-facing scripts and CI entry points:
+Use `writeShellApplication` for user-facing scripts and substantive project-specific orchestration:
 
 ```nix
 pkgs.writeShellApplication {
@@ -139,7 +129,7 @@ pkgs.writeShellApplication {
 
 The script receives strict shell settings, a dependency-complete `PATH`, and ShellCheck during the build. Keep the shell source readable and testable; use Nix to supply dependencies rather than interpolating every executable path into the script.
 
-Private, tiny glue whose complete environment is controlled by its caller may use `writeShellScript`. Independently invoked behavior should not.
+Do not use this mechanism to rename standard Nix commands. A script whose body is only `nix flake check`, `nix fmt`, or `nix develop` should be replaced by that command at its call sites. Private, tiny glue whose complete environment is controlled by its caller may use `writeShellScript`; independently invoked behavior should be packaged only when it has behavior of its own.
 
 ## Secrets
 

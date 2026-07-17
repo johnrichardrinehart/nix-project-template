@@ -35,17 +35,19 @@ Prefer a CI execution step containing exactly:
 - run: nix flake check --print-build-logs
 ```
 
-When an operation is impure, credentialed, or not suitable for the flake check sandbox, package it and use:
+Do not hide this standard command behind a repository-specific script, package, or generic `ci` app. The extra name obscures what CI does without adding reproducibility.
+
+When an additional operation is impure, credentialed, or unsuitable for the flake-check sandbox, package that operation under a descriptive name and invoke it explicitly, for example:
 
 ```yaml
-- run: nix run .#ci
+- run: nix run .#integration-test
 ```
 
-A provider matrix may invoke multiple flake apps, but each invocation should remain independently reproducible outside the CI service.
+A provider matrix may invoke multiple descriptively named flake apps, but each invocation should remain independently reproducible outside the CI service.
 
 ## Packaged shell entry points
 
-Shell is appropriate for process orchestration and external command composition. Package it with `writeShellApplication` so that:
+Shell is appropriate for substantive process orchestration and external command composition. Package such behavior with `writeShellApplication` so that:
 
 - runtime executables are explicit store dependencies;
 - ShellCheck runs while building the package;
@@ -53,7 +55,7 @@ Shell is appropriate for process orchestration and external command composition.
 - CI does not need to install an ad hoc tool list;
 - `nix run .#name` works locally and on every provider.
 
-If several CI entry points share substantial behavior, package a shared script or executable rather than sourcing files installed by CI setup steps.
+If several operations share substantial project-specific behavior, package a shared script or executable rather than sourcing files installed by CI setup steps. A one-command forwarder is not substantial shared behavior and should be deleted in favor of the command it invokes.
 
 ## Nix provisioning
 

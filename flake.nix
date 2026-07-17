@@ -11,7 +11,7 @@
   };
 
   outputs =
-    inputs@{ self, flake-parts, ... }:
+    inputs@{ flake-parts, ... }:
     flake-parts.lib.mkFlake { inherit inputs; } {
       systems = [
         "x86_64-linux"
@@ -32,23 +32,5 @@
         extraInputsFlake = ./dev;
         module = import ./nix/flake/dev-partition.nix;
       };
-
-      perSystem =
-        { pkgs, system, ... }:
-        let
-          packages = import ./nix/packages { inherit pkgs; };
-        in
-        {
-          inherit packages;
-
-          apps = {
-            default = {
-              type = "app";
-              program = "${packages.ci}/bin/ci";
-              meta.description = "Run the repository's authoritative CI command";
-            };
-            ci = self.apps.${system}.default;
-          };
-        };
     };
 }

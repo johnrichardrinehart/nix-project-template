@@ -1,4 +1,4 @@
-{ inputs, self, ... }:
+{ inputs, ... }:
 {
   imports = [
     inputs.git-hooks.flakeModule
@@ -9,7 +9,6 @@
     {
       config,
       pkgs,
-      system,
       ...
     }:
     {
@@ -58,10 +57,6 @@
           require_serial = true;
           stages = [ "pre-push" ];
         };
-      };
-
-      checks = import ../checks {
-        inherit self system;
       };
 
       devShells.default = pkgs.mkShell {
