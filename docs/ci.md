@@ -1,0 +1,90 @@
+# CI boundary
+
+CI configuration is an adapter, not the project build system.
+
+## Adapter responsibilities
+
+A CI platform file may:
+
+- check out the requested revision;
+- install a pinned Nix implementation and version;
+- enable required Nix features, sandboxing, and virtualization;
+- authenticate input fetches and binary caches;
+- connect trusted remote builders;
+- restore and publish Nix store paths;
+- pass explicitly authorized secrets to one command;
+- retain logs and declared build artifacts.
+
+These operations necessarily depend on the runner and provider. Keep them declarative and use maintained provisioning/cache actions or images where available.
+
+## Repository responsibilities
+
+The repository owns:
+
+- build and test selection;
+- formatter and linter configuration;
+- concurrency that is intrinsic to the build;
+- retries required by project semantics;
+- artifact construction and validation;
+- deployment behavior;
+- cleanup and rollback behavior.
+
+Prefer a CI execution step containing exactly:
+
+```yaml
+- run: nix flake check --print-build-logs
+```
+
+When an operation is impure, credentialed, or not suitable for the flake check sandbox, package it and use:
+
+```yaml
+- run: nix run .#ci
+```
+
+A provider matrix may invoke multiple flake apps, but each invocation should remain independently reproducible outside the CI service.
+
+## Packaged shell entry points
+
+Shell is appropriate for process orchestration and external command composition. Package it with `writeShellApplication` so that:
+
+- runtime executables are explicit store dependencies;
+- ShellCheck runs while building the package;
+- strict mode is supplied consistently;
+- CI does not need to install an ad hoc tool list;
+- `nix run .#name` works locally and on every provider.
+
+If several CI entry points share substantial behavior, package a shared script or executable rather than sourcing files installed by CI setup steps.
+
+## Nix provisioning
+
+Pin the provisioning adapter to obtain a predictable Nix version. The adapter should configure:
+
+- `nix-command` and `flakes`;
+- sandboxing appropriate to the runner;
+- KVM when NixOS VM tests require it;
+- authenticated Git access when private inputs are intentional;
+- trusted substituters and public keys;
+- builders and `builders-use-substitutes` where remote builders are used.
+
+Project logic must not assume a mutable runner image happens to contain the desired Nix version.
+
+## Store-path caching
+
+Cache Nix store paths rather than language-specific build directories whenever the build is represented by Nix derivations. A binary cache preserves content-addressed results across branches, jobs, machines, and CI runs without restoring mutable work directories.
+
+A cache adapter must define:
+
+- read availability for pull requests and forks;
+- write authority for trusted branches;
+- retention and size limits;
+- cache poisoning protections;
+- signing or trust configuration;
+- whether results are available only to CI or also to developers and users.
+
+GitHub's native Actions cache is suitable for CI-only reuse. Cachix, FlakeHub Cache, Attic, and ordinary Nix binary caches can also serve developers or deployment hosts. Remote builders complement caches by moving computation; they do not replace cache publication.
+
+## Credentials
+
+Provisioning credentials should be narrowly scoped to the adapter that consumes them. Application and deployment secrets should be declared through SecretSpec and exposed only to the packaged command that needs them.
+
+Untrusted pull requests must not receive write-capable cache credentials or deployment secrets. Their derivations may consume trusted cache entries but must not be allowed to publish entries trusted by protected branches without an isolation policy.
